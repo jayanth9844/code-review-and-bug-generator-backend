@@ -1,11 +1,19 @@
 services:
   - type: web
-    name: student-score-prediction
+    name: code-review-bug-generator
     env: docker
     plan: free
     branch: main
     autoDeploy: true
     dockerfilePath: ./Dockerfile
     envVars:
-      - key: MODEL_PATH
-        value: app/models/model.joblib
+      - key: API_KEY
+        scope: build,runtime
+      - key: JWT_SECRET_KEY
+        scope: build,runtime
+
+  - type: redis
+    name: code-review-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: noeviction
