@@ -9,6 +9,5 @@ services:
     healthCheckPath: /health
     envVars:
       - key: API_KEY
-        scope: build,runtime
-      - key: JWT_SECRET_KEY
+        sync: false
         scope: build,runtime

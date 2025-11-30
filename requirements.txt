@@ -1,9 +1,16 @@
+# Core web framework - optimized versions for memory constraints
 fastapi==0.110.0
 uvicorn[standard]==0.27.0
+
+# Data validation
 pydantic==2.6.1
+
+# Environment variables
 python-dotenv==1.2.0
-langchain==0.1.14
+
+# LangChain for Gemini integration (minimal install)
 langchain-core==0.1.53
 langchain-google-genai==0.0.11
+
+# Google Generative AI
 google-generativeai==0.4.1
-requests==2.31.0
