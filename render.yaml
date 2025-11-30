@@ -6,6 +6,7 @@ services:
     branch: main
     autoDeploy: true
     dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: API_KEY
         scope: build,runtime

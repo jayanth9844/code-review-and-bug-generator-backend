@@ -13,6 +13,18 @@ app = FastAPI(
 # Link middleware
 app.add_middleware(LoggingMiddleware)
 
+# Health check endpoint
+@app.get("/health")
+def health_check():
+    """Health check endpoint."""
+    return {"status": "ok"}
+
+# Root endpoint
+@app.get("/")
+def root():
+    """Root endpoint."""
+    return {"message": "Code Review and Bug Generator API", "docs": "/docs"}
+
 # Link endpoints
 app.include_router(routes_auth.router, tags=["Auth"])
 
