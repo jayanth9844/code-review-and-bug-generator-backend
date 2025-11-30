@@ -1,36 +1,26 @@
 """
 Routes for code analysis endpoint.
-Analyzes code snippets for potential issues using RAG and Gemini API.
+Analyzes code snippets for potential issues using Gemini API.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from app.core.dependencies import get_current_user, get_api_key
-from app.RAG import analyze_code, initialize_vector_store_and_embeddings
+from app.services import analyze_code as analyze_code_service
+from app.api.routes_code_input import get_stored_code
 
 router = APIRouter()
-
-# Global vector store cache
-_vector_store_cache = None
-_embedding_model_cache = None
-
-
-def get_vector_store_and_embeddings():
-    """Get or initialize vector store and embedding model."""
-    global _vector_store_cache, _embedding_model_cache
-    
-    if _vector_store_cache is None or _embedding_model_cache is None:
-        _embedding_model_cache, _vector_store_cache = initialize_vector_store_and_embeddings()
-    
-    return _embedding_model_cache, _vector_store_cache
 
 
 class AnalyzeCodeRequest(BaseModel):
     """Request model for code analysis."""
-    query: Optional[str] = Field(
-        default="Analyze the code for potential bugs, security risks, performance issues, and best-practice violations.",
-        description="Natural language query describing the code analysis needed"
+    code: Optional[str] = Field(
+        default=None,
+        description="Code snippet to analyze. If not provided, uses stored code from /code-input"
+    )
+    api_key: Optional[str] = Field(
+        default=None,
+        description="Gemini API key. If not provided, uses API_KEY from environment variables."
     )
 
 
@@ -55,32 +45,72 @@ class AnalyzeCodeResponse(BaseModel):
     "/analyze-code",
     response_model=AnalyzeCodeResponse,
     summary="Analyze Code for Issues",
-    description="Analyze loaded code snippets for potential bugs, security risks, and best practices.",
+    description="Analyze code snippets for potential bugs, security risks, and best practices.",
 )
-def analyze_code_endpoint(
-    request: AnalyzeCodeRequest,
-    user=Depends(get_current_user),
-    _=Depends(get_api_key)
-):
+def analyze_code_endpoint(request: AnalyzeCodeRequest):
     """
     Analyze code for potential issues.
     
-    - **query**: Natural language description of analysis (optional, uses default if not provided)
-    
-    Default Query: "Analyze the code for potential bugs, security risks, performance issues, and best-practice violations."
+    - **code**: Optional code snippet. If not provided, analyzes code from /code-input endpoint
+    - **api_key**: Optional Gemini API key. If not provided, uses API_KEY from environment variables
     """
     try:
-        embedding_model, vector_store = get_vector_store_and_embeddings()
+        # Get code to analyze
+        code_to_analyze = request.code if request.code else get_stored_code()
+        
+        if not code_to_analyze:
+            return AnalyzeCodeResponse(
+                status="error",
+                issues=[],
+                total_issues=0
+            )
         
         # Analyze code
-        result = analyze_code(request.query, embedding_model, vector_store)
+        result = analyze_code_service(code_to_analyze, api_key=request.api_key)
+        
+        if not isinstance(result, dict):
+            return AnalyzeCodeResponse(
+                status="error",
+                issues=[],
+                total_issues=0
+            )
         
         issues = result.get("issues", [])
         
+        # Convert to response format
+        formatted_issues = []
+        for issue in issues:
+            try:
+                formatted_issues.append(IssueDetail(
+                    title=issue.get("title", ""),
+                    type=issue.get("type", ""),
+                    severity=issue.get("severity", ""),
+                    lineNumber=issue.get("lineNumber"),
+                    description=issue.get("description", ""),
+                    suggestedFix=issue.get("suggestedFix", "")
+                ))
+            except Exception:
+                # Skip malformed issues
+                pass
+        
         return AnalyzeCodeResponse(
             status="success",
-            issues=issues,
-            total_issues=len(issues)
+            issues=formatted_issues,
+            total_issues=len(formatted_issues)
+        )
+    except ValueError as e:
+        # API key validation error
+        return AnalyzeCodeResponse(
+            status="error",
+            issues=[],
+            total_issues=0
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error analyzing code: {str(e)}")
+        import traceback
+        print(f"Error analyzing code: {str(e)}")
+        traceback.print_exc()
+        return AnalyzeCodeResponse(
+            status="error",
+            issues=[],
+            total_issues=0
+        )

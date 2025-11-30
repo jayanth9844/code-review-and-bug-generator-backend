@@ -1,36 +1,22 @@
 """
 Routes for bug injection endpoint.
-Injects bugs into code snippets for testing using RAG and Gemini API.
+Injects bugs into code snippets for testing using Gemini API.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from app.core.dependencies import get_current_user, get_api_key
-from app.RAG import inject_bugs, initialize_vector_store_and_embeddings
+from app.services import inject_bugs as inject_bugs_service
+from app.api.routes_code_input import get_stored_code
 
 router = APIRouter()
-
-# Global vector store cache
-_vector_store_cache = None
-_embedding_model_cache = None
-
-
-def get_vector_store_and_embeddings():
-    """Get or initialize vector store and embedding model."""
-    global _vector_store_cache, _embedding_model_cache
-    
-    if _vector_store_cache is None or _embedding_model_cache is None:
-        _embedding_model_cache, _vector_store_cache = initialize_vector_store_and_embeddings()
-    
-    return _embedding_model_cache, _vector_store_cache
 
 
 class InjectBugsRequest(BaseModel):
     """Request model for bug injection."""
-    query: Optional[str] = Field(
-        default="Inject bugs into the code and return details.",
-        description="Natural language query describing the bug injection context"
+    code: Optional[str] = Field(
+        default=None,
+        description="Code snippet for bug injection. If not provided, uses stored code from /code-input"
     )
     bug_type: str = Field(
         default="Security Vulnerability",
@@ -47,6 +33,10 @@ class InjectBugsRequest(BaseModel):
         description="Number of bugs to inject",
         ge=1,
         le=10,
+    )
+    api_key: Optional[str] = Field(
+        default=None,
+        description="Gemini API key. If not provided, uses API_KEY from environment variables."
     )
 
 
@@ -71,42 +61,71 @@ class InjectBugsResponse(BaseModel):
     summary="Inject Bugs into Code",
     description="Inject specified bugs into code for testing and training purposes.",
 )
-def inject_bugs_endpoint(
-    request: InjectBugsRequest,
-    user=Depends(get_current_user),
-    _=Depends(get_api_key)
-):
+def inject_bugs_endpoint(request: InjectBugsRequest):
     """
-    Inject bugs into loaded code snippets.
+    Inject bugs into code snippets.
     
-    - **query**: Context for bug injection (optional, uses default if not provided)
+    - **code**: Optional code snippet. If not provided, uses code from /code-input endpoint
     - **bug_type**: Type of bug to inject (default: "Security Vulnerability")
     - **severity_level**: 1-5 where 5 is most severe (default: 5)
     - **num_bugs**: Number of bugs to inject (default: 2)
-    
-    Default Query: "Inject bugs into the code and return details."
+    - **api_key**: Optional Gemini API key. If not provided, uses API_KEY from environment variables
     """
     try:
-        embedding_model, vector_store = get_vector_store_and_embeddings()
+        # Get code to analyze
+        code_to_analyze = request.code if request.code else get_stored_code()
+        
+        if not code_to_analyze:
+            return InjectBugsResponse(
+                status="error",
+                buggy_code="",
+                bugs_injected=[],
+                total_bugs_injected=0
+            )
         
         # Inject bugs
-        result = inject_bugs(
-            query=request.query,
-            embedding_model=embedding_model,
-            vector_store=vector_store,
+        result = inject_bugs_service(
+            code_snippet=code_to_analyze,
             bug_type=request.bug_type,
             severity_level=request.severity_level,
-            num_bugs=request.num_bugs
+            num_bugs=request.num_bugs,
+            api_key=request.api_key
         )
         
         buggy_code = result.get("buggy_code", "")
         bugs_injected = result.get("bugs_injected", [])
         
+        # Convert to response format
+        formatted_bugs = []
+        for bug in bugs_injected:
+            try:
+                formatted_bugs.append(BugDetail(
+                    type=bug.get("type", ""),
+                    line_number=bug.get("line_number", 0),
+                    description=bug.get("description", "")
+                ))
+            except Exception:
+                # Skip malformed bugs
+                pass
+        
         return InjectBugsResponse(
             status="success",
             buggy_code=buggy_code,
-            bugs_injected=bugs_injected,
-            total_bugs_injected=len(bugs_injected)
+            bugs_injected=formatted_bugs,
+            total_bugs_injected=len(formatted_bugs)
+        )
+    except ValueError as e:
+        # API key validation error
+        return InjectBugsResponse(
+            status="error",
+            buggy_code="",
+            bugs_injected=[],
+            total_bugs_injected=0
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error injecting bugs: {str(e)}")
+        return InjectBugsResponse(
+            status="error",
+            buggy_code="",
+            bugs_injected=[],
+            total_bugs_injected=0
+        )

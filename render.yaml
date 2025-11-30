@@ -12,9 +12,3 @@ services:
         scope: build,runtime
       - key: JWT_SECRET_KEY
         scope: build,runtime
-
-  - type: redis
-    name: code-review-redis
-    plan: free
-    region: oregon
-    maxmemoryPolicy: noeviction

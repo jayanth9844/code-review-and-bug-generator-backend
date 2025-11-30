@@ -1,36 +1,23 @@
 """
 Routes for code input endpoint.
-Handles loading and indexing code snippets into the vector store.
+Handles receiving code snippets for analysis.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import List
-from app.core.dependencies import get_current_user, get_api_key
-from app.RAG import load_and_index_code, initialize_vector_store_and_embeddings
 
 router = APIRouter()
 
-# Global vector store cache
-_vector_store_cache = None
-_embedding_model_cache = None
-
-
-def get_vector_store_and_embeddings():
-    """Get or initialize vector store and embedding model."""
-    global _vector_store_cache, _embedding_model_cache
-    
-    if _vector_store_cache is None or _embedding_model_cache is None:
-        _embedding_model_cache, _vector_store_cache = initialize_vector_store_and_embeddings()
-    
-    return _embedding_model_cache, _vector_store_cache
+# Global storage for code snippets
+_code_storage: List[str] = []
 
 
 class CodeInputRequest(BaseModel):
     """Request model for loading code snippets."""
     code_snippets: List[str] = Field(
         ..., 
-        description="List of code snippets to load and index",
+        description="List of code snippets to load",
         min_items=1,
     )
 
@@ -45,29 +32,41 @@ class CodeInputResponse(BaseModel):
 @router.post(
     "/code-input",
     response_model=CodeInputResponse,
-    summary="Load and Index Code Snippets",
-    description="Load code snippets and index them in the vector store for RAG processing.",
+    summary="Load Code Snippets",
+    description="Load code snippets for analysis.",
 )
-def code_input_endpoint(
-    request: CodeInputRequest,
-    user=Depends(get_current_user),
-    _=Depends(get_api_key)
-):
+def code_input_endpoint(request: CodeInputRequest):
     """
-    Load code snippets and add them to the vector store.
+    Load and store code snippets for analysis.
     
     - **code_snippets**: List of Python code snippets (required)
     """
+    global _code_storage
+    
     try:
-        embedding_model, vector_store = get_vector_store_and_embeddings()
-        
-        # Load and index the code snippets
-        message = load_and_index_code(request.code_snippets, embedding_model, vector_store)
+        # Store the code snippets
+        _code_storage.extend(request.code_snippets)
         
         return CodeInputResponse(
             status="success",
-            message=message,
+            message=f"Loaded {len(request.code_snippets)} code snippet(s) into memory",
             snippets_loaded=len(request.code_snippets)
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading code: {str(e)}")
+        return CodeInputResponse(
+            status="error",
+            message=f"Error loading code: {str(e)}",
+            snippets_loaded=0
+        )
+
+
+def get_stored_code() -> str:
+    """Get all stored code snippets joined together."""
+    global _code_storage
+    return "\n\n---SNIPPET SEPARATOR---\n\n".join(_code_storage) if _code_storage else ""
+
+
+def clear_stored_code():
+    """Clear stored code snippets."""
+    global _code_storage
+    _code_storage = []
