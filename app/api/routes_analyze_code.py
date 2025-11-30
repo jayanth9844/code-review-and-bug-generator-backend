@@ -40,6 +40,7 @@ class AnalyzeCodeResponse(BaseModel):
     status: str
     issues: List[IssueDetail] = []
     total_issues: int
+    error_message: Optional[str] = None
 
 
 @router.post(
@@ -63,7 +64,8 @@ def analyze_code_endpoint(request: AnalyzeCodeRequest):
             return AnalyzeCodeResponse(
                 status="error",
                 issues=[],
-                total_issues=0
+                total_issues=0,
+                error_message="No code provided. Please provide code in request or load code using /code-input endpoint"  
             )
         
         # Analyze code
@@ -73,7 +75,8 @@ def analyze_code_endpoint(request: AnalyzeCodeRequest):
             return AnalyzeCodeResponse(
                 status="error",
                 issues=[],
-                total_issues=0
+                total_issues=0,
+                error_message="Unexpected response format from AI service"
             )
         
         issues = result.get("issues", [])
@@ -100,19 +103,23 @@ def analyze_code_endpoint(request: AnalyzeCodeRequest):
             total_issues=len(formatted_issues)
         )
     except ValueError as e:
-        # API key validation error
-        print(f"API Key Error: {str(e)}")
+        # API key validation or other ValueError
+        error_msg = str(e)
+        print(f"API Key/Validation Error: {error_msg}")
         return AnalyzeCodeResponse(
             status="error",
             issues=[],
-            total_issues=0
+            total_issues=0,
+            error_message=error_msg
         )
     except Exception as e:
         import traceback
-        print(f"Error analyzing code: {str(e)}")
+        error_msg = f"Error analyzing code: {str(e)}"
+        print(error_msg)
         traceback.print_exc()
         return AnalyzeCodeResponse(
             status="error",
             issues=[],
-            total_issues=0
+            total_issues=0,
+            error_message=error_msg
         )

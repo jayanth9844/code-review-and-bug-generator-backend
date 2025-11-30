@@ -46,6 +46,7 @@ class MetricsResponse(BaseModel):
     status: str
     summary_metrics: SummaryMetrics
     issue_distribution: IssueDistribution
+    error_message: Optional[str] = None
 
 
 @router.post(
@@ -79,7 +80,8 @@ def code_metrics_endpoint(request: MetricsRequest):
                     code_smells=0,
                     best_practices=0,
                     performance_issues=0
-                )
+                ),
+                error_message="No code provided. Please provide code in request or load code using /code-input endpoint"
             )
         
         # Get metrics
@@ -104,8 +106,9 @@ def code_metrics_endpoint(request: MetricsRequest):
             )
         )
     except ValueError as e:
-        # API key validation error
-        print(f"API Key Error: {str(e)}")
+        # API key validation or other ValueError
+        error_msg = str(e)
+        print(f"API Key/Validation Error: {error_msg}")
         return MetricsResponse(
             status="error",
             summary_metrics=SummaryMetrics(
@@ -119,11 +122,13 @@ def code_metrics_endpoint(request: MetricsRequest):
                 code_smells=0,
                 best_practices=0,
                 performance_issues=0
-            )
+            ),
+            error_message=error_msg
         )
     except Exception as e:
         import traceback
-        print(f"Error getting code metrics: {str(e)}")
+        error_msg = f"Error getting code metrics: {str(e)}"
+        print(error_msg)
         traceback.print_exc()
         return MetricsResponse(
             status="error",
@@ -138,5 +143,6 @@ def code_metrics_endpoint(request: MetricsRequest):
                 code_smells=0,
                 best_practices=0,
                 performance_issues=0
-            )
+            ),
+            error_message=error_msg
         )

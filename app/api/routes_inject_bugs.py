@@ -54,6 +54,7 @@ class InjectBugsResponse(BaseModel):
     buggy_code: str
     bugs_injected: List[BugDetail] = []
     total_bugs_injected: int
+    error_message: Optional[str] = None
 
 
 @router.post(
@@ -81,7 +82,8 @@ def inject_bugs_endpoint(request: InjectBugsRequest):
                 status="error",
                 buggy_code="",
                 bugs_injected=[],
-                total_bugs_injected=0
+                total_bugs_injected=0,
+                error_message="No code provided. Please provide code in request or load code using /code-input endpoint"
             )
         
         # Inject bugs
@@ -116,21 +118,25 @@ def inject_bugs_endpoint(request: InjectBugsRequest):
             total_bugs_injected=len(formatted_bugs)
         )
     except ValueError as e:
-        # API key validation error
-        print(f"API Key Error: {str(e)}")
+        # API key validation or other ValueError
+        error_msg = str(e)
+        print(f"API Key/Validation Error: {error_msg}")
         return InjectBugsResponse(
             status="error",
             buggy_code="",
             bugs_injected=[],
-            total_bugs_injected=0
+            total_bugs_injected=0,
+            error_message=error_msg
         )
     except Exception as e:
         import traceback
-        print(f"Error injecting bugs: {str(e)}")
+        error_msg = f"Error injecting bugs: {str(e)}"
+        print(error_msg)
         traceback.print_exc()
         return InjectBugsResponse(
             status="error",
             buggy_code="",
             bugs_injected=[],
-            total_bugs_injected=0
+            total_bugs_injected=0,
+            error_message=error_msg
         )
