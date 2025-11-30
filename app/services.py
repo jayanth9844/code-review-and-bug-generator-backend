@@ -73,7 +73,7 @@ def analyze_code(code_snippet: str, api_key: str = None):
     logger.info(f"Starting code analysis. Code length: {len(code_snippet)} characters")
     key = get_api_key(api_key)
     genai.configure(api_key=key)
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=key)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=key, convert_system_message_to_human=True)
 
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", "You are a helpful assistant that analyzes code for potential issues and returns the analysis in a structured JSON format."),
@@ -123,7 +123,7 @@ def get_code_metrics(code_snippet: str, api_key: str = None) -> dict:
     logger.info(f"Starting code metrics calculation. Code length: {len(code_snippet)} characters")
     key = get_api_key(api_key)
     genai.configure(api_key=key)
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=key)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=key, convert_system_message_to_human=True)
 
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", "You are a helpful assistant that analyzes code and provides summary metrics and issue distribution in a structured JSON format."),
@@ -180,7 +180,7 @@ def inject_bugs(code_snippet: str, bug_type: str, severity_level: int, num_bugs:
     logger.info(f"Starting bug injection. Code length: {len(code_snippet)} chars, type: {bug_type}, severity: {severity_level}, num: {num_bugs}")
     key = get_api_key(api_key)
     genai.configure(api_key=key)
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=key)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=key, convert_system_message_to_human=True)
 
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", "You are a helpful assistant that injects bugs into code based on given parameters and returns the modified code and bug details in JSON format."),
