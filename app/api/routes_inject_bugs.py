@@ -36,7 +36,8 @@ class InjectBugsRequest(BaseModel):
     )
     api_key: Optional[str] = Field(
         default=None,
-        description="Gemini API key. If not provided, uses API_KEY from environment variables."
+        description="Gemini API key. If not provided, uses API_KEY from environment variables.",
+        examples=[None]
     )
 
 
@@ -116,6 +117,7 @@ def inject_bugs_endpoint(request: InjectBugsRequest):
         )
     except ValueError as e:
         # API key validation error
+        print(f"API Key Error: {str(e)}")
         return InjectBugsResponse(
             status="error",
             buggy_code="",
@@ -123,6 +125,9 @@ def inject_bugs_endpoint(request: InjectBugsRequest):
             total_bugs_injected=0
         )
     except Exception as e:
+        import traceback
+        print(f"Error injecting bugs: {str(e)}")
+        traceback.print_exc()
         return InjectBugsResponse(
             status="error",
             buggy_code="",

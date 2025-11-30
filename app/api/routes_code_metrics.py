@@ -20,7 +20,8 @@ class MetricsRequest(BaseModel):
     )
     api_key: Optional[str] = Field(
         default=None,
-        description="Gemini API key. If not provided, uses API_KEY from environment variables."
+        description="Gemini API key. If not provided, uses API_KEY from environment variables.",
+        examples=[None]
     )
 
 
@@ -104,6 +105,7 @@ def code_metrics_endpoint(request: MetricsRequest):
         )
     except ValueError as e:
         # API key validation error
+        print(f"API Key Error: {str(e)}")
         return MetricsResponse(
             status="error",
             summary_metrics=SummaryMetrics(
@@ -120,6 +122,9 @@ def code_metrics_endpoint(request: MetricsRequest):
             )
         )
     except Exception as e:
+        import traceback
+        print(f"Error getting code metrics: {str(e)}")
+        traceback.print_exc()
         return MetricsResponse(
             status="error",
             summary_metrics=SummaryMetrics(

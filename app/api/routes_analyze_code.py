@@ -20,7 +20,8 @@ class AnalyzeCodeRequest(BaseModel):
     )
     api_key: Optional[str] = Field(
         default=None,
-        description="Gemini API key. If not provided, uses API_KEY from environment variables."
+        description="Gemini API key. If not provided, uses API_KEY from environment variables.",
+        examples=[None]
     )
 
 
@@ -100,6 +101,7 @@ def analyze_code_endpoint(request: AnalyzeCodeRequest):
         )
     except ValueError as e:
         # API key validation error
+        print(f"API Key Error: {str(e)}")
         return AnalyzeCodeResponse(
             status="error",
             issues=[],

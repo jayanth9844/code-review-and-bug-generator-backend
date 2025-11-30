@@ -29,13 +29,19 @@ def get_api_key(user_api_key: str = None) -> str:
     Raises:
         ValueError: If neither user_api_key nor DEFAULT_API_KEY is available
     """
-    # Handle empty strings as None
-    if user_api_key and user_api_key.strip():
-        return user_api_key.strip()
-    elif DEFAULT_API_KEY and DEFAULT_API_KEY.strip():
+    # Handle empty strings and Swagger UI placeholder values as None
+    if user_api_key:
+        cleaned = user_api_key.strip() if isinstance(user_api_key, str) else str(user_api_key)
+        # Ignore Swagger UI placeholder values
+        if cleaned.lower() not in ["string", "none", "null", ""]:
+            return cleaned
+    
+    # Fall back to environment variable
+    if DEFAULT_API_KEY and DEFAULT_API_KEY.strip():
         return DEFAULT_API_KEY.strip()
-    else:
-        raise ValueError("API_KEY is required. Provide it in the request or set API_KEY environment variable.")
+    
+    # No valid API key found
+    raise ValueError("API_KEY is required. Provide it in the request or set API_KEY environment variable.")
 
 
 def analyze_code(code_snippet: str, api_key: str = None):
