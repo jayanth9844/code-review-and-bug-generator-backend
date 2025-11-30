@@ -1,10 +1,25 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.api import routes_code_input, routes_analyze_code, routes_code_metrics, routes_inject_bugs
 
 app = FastAPI(
     title="Code Analyzer and Bug Generator API",
     description="API for code analysis, metrics, and bug injection using Gemini",
     version="1.0.0"
+)
+
+# Add CORS middleware - ADD THIS BEFORE YOUR ROUTES
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://*.vercel.app",  # For when you deploy to Vercel
+        "*"  # Or use "*" to allow all origins (dev only)
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Health check endpoint
